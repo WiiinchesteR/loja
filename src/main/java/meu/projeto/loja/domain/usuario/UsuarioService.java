@@ -2,6 +2,8 @@ package meu.projeto.loja.domain.usuario;
 
 import lombok.RequiredArgsConstructor;
 import meu.projeto.loja.infra.exceptions.NomeUsuarioExistenteExceptions;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,5 +22,10 @@ public class UsuarioService {
         usuario.setNomeUsuario(dto.nomeUsuario());
         usuario.setSenha(dto.senha());
         return new UsuarioDTO(usuarioRepository.save(usuario));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UsuarioDTO> listarUsuarios(Pageable paginacao) {
+        return usuarioRepository.findAll(paginacao).map(UsuarioDTO::new);
     }
 }
