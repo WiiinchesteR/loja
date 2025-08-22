@@ -18,8 +18,8 @@ public class UsuarioEntity {
     private Long id;
     @Column(name = "nome")
     private String nome;
-    @Column(name = "nome", length = 30)
+    @Column(name = "nome_usuario", length = 30, unique = true, nullable = false)
     private String nomeUsuario;
-    @Column(name = "nome", length = 12)
+    @Column(name = "senha")
     private String senha;
 }
