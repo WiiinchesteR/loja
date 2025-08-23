@@ -1,6 +1,7 @@
 package meu.projeto.loja.domain.usuario;
 
 import lombok.RequiredArgsConstructor;
+import meu.projeto.loja.infra.exceptions.IdNaoEncontradoExceptions;
 import meu.projeto.loja.infra.exceptions.NomeUsuarioExistenteExceptions;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,5 +28,13 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public Page<UsuarioDTO> listarUsuarios(Pageable paginacao) {
         return usuarioRepository.findAll(paginacao).map(UsuarioDTO::new);
+    }
+
+    @Transactional
+    public void deletarUsuario(Long id) {
+        usuarioRepository.findById(id).orElseThrow(
+                () -> new IdNaoEncontradoExceptions("Id não encontrado.")
+        );
+        usuarioRepository.deleteById(id);
     }
 }
