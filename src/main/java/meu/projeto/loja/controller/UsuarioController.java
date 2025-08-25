@@ -28,6 +28,14 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.listarUsuarios(paginacao));
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<UsuarioDTO> atualizarUsuario(
+            @PathVariable Long id,
+            @RequestBody UsuarioDTO dto
+    ) {
+        return ResponseEntity.ok(usuarioService.atualizarUsuario(id, dto));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletarUsuario(@PathVariable Long id) {
         usuarioService.deletarUsuario(id);

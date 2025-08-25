@@ -31,6 +31,17 @@ public class UsuarioService {
     }
 
     @Transactional
+    public UsuarioDTO atualizarUsuario(Long id, UsuarioDTO dto) {
+        var usuario = usuarioRepository.findById(id).orElseThrow(
+                () -> new IdNaoEncontradoExceptions("Id não encontrado.")
+        );
+        if (dto.nome() != null) usuario.setNome(dto.nome());
+        if (dto.nomeUsuario() != null)usuario.setNomeUsuario(dto.nomeUsuario());
+        if (dto.senha() != null)usuario.setSenha(dto.senha());
+        return new UsuarioDTO(usuarioRepository.save(usuario));
+    }
+
+    @Transactional
     public void deletarUsuario(Long id) {
         usuarioRepository.findById(id).orElseThrow(
                 () -> new IdNaoEncontradoExceptions("Id não encontrado.")
