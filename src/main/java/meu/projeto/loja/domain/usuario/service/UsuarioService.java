@@ -24,19 +24,21 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO dto) {
-        if (usuarioRepository.existsByNomeUsuario(dto.nomeUsuario().replaceAll("\\s+", ""))) {
-            throw new NomeUsuarioExistenteExceptions("Nome de usuário já existe.");
-        }
-        UsuarioEntity usuario = new UsuarioEntity();
+        String nomeUsuarioNormalizado = dto.nomeUsuario().replaceAll("\\s+", "").toLowerCase();
+        String senhaNormalizada = dto.senha().replaceAll("\\s+", "");
         if (dto.nomeUsuario().contains(" ")) {
             throw new NomeUsuarioComEspacosException("Nome de usuário não pode conter espaços.");
         }
         if (dto.senha().contains(" ")) {
             throw new SenhaComEspacosException("Senha não pode conter espaços.");
         }
+        if (usuarioRepository.existsByNomeUsuario(nomeUsuarioNormalizado)) {
+            throw new NomeUsuarioExistenteExceptions("Nome de usuário já existe.");
+        }
+        UsuarioEntity usuario = new UsuarioEntity();
         usuario.setNome(dto.nome().trim().replaceAll("\\s+", " "));
-        usuario.setNomeUsuario(dto.nomeUsuario().replaceAll("\\s+", "").toLowerCase());
-        usuario.setSenha(passwordEncoder.encode(dto.senha().replaceAll("\\s+", "").toLowerCase()));
+        usuario.setNomeUsuario(nomeUsuarioNormalizado);
+        usuario.setSenha(passwordEncoder.encode(senhaNormalizada));
         var usuarioSalvo = usuarioRepository.save(usuario);
         return toResponse(usuarioSalvo);
     }
