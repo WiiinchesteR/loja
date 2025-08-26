@@ -1,5 +1,6 @@
-package meu.projeto.loja.domain.usuario;
+package meu.projeto.loja.domain.usuario.repository;
 
+import meu.projeto.loja.domain.usuario.entity.UsuarioEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

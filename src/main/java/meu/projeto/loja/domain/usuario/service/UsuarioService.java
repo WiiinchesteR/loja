@@ -1,10 +1,18 @@
-package meu.projeto.loja.domain.usuario;
+package meu.projeto.loja.domain.usuario.service;
 
 import lombok.RequiredArgsConstructor;
+import meu.projeto.loja.domain.usuario.dto.UsuarioRequestDTO;
+import meu.projeto.loja.domain.usuario.dto.UsuarioResponseDTO;
+import meu.projeto.loja.domain.usuario.dto.UsuarioUpdateDTO;
+import meu.projeto.loja.domain.usuario.entity.UsuarioEntity;
+import meu.projeto.loja.domain.usuario.repository.UsuarioRepository;
 import meu.projeto.loja.infra.exceptions.IdNaoEncontradoExceptions;
+import meu.projeto.loja.infra.exceptions.NomeUsuarioComEspacosException;
 import meu.projeto.loja.infra.exceptions.NomeUsuarioExistenteExceptions;
+import meu.projeto.loja.infra.exceptions.SenhaComEspacosException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,33 +20,76 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UsuarioDTO cadastrarUsuario(UsuarioDTO dto) {
-        if (usuarioRepository.existsByNomeUsuario(dto.nomeUsuario())) {
-            throw  new NomeUsuarioExistenteExceptions("Nome de usuário já existe.");
+    public UsuarioResponseDTO cadastrarUsuario(UsuarioRequestDTO dto) {
+        if (usuarioRepository.existsByNomeUsuario(dto.nomeUsuario().replaceAll("\\s+", ""))) {
+            throw new NomeUsuarioExistenteExceptions("Nome de usuário já existe.");
         }
         UsuarioEntity usuario = new UsuarioEntity();
-        usuario.setNome(dto.nome());
-        usuario.setNomeUsuario(dto.nomeUsuario());
-        usuario.setSenha(dto.senha());
-        return new UsuarioDTO(usuarioRepository.save(usuario));
+        if (dto.nomeUsuario().contains(" ")) {
+            throw new NomeUsuarioComEspacosException("Nome de usuário não pode conter espaços.");
+        }
+        if (dto.senha().contains(" ")) {
+            throw new SenhaComEspacosException("Senha não pode conter espaços.");
+        }
+        usuario.setNome(dto.nome().trim().replaceAll("\\s+", " "));
+        usuario.setNomeUsuario(dto.nomeUsuario().replaceAll("\\s+", "").toLowerCase());
+        usuario.setSenha(passwordEncoder.encode(dto.senha().replaceAll("\\s+", "").toLowerCase()));
+        var usuarioSalvo = usuarioRepository.save(usuario);
+        return toResponse(usuarioSalvo);
     }
 
     @Transactional(readOnly = true)
-    public Page<UsuarioDTO> listarUsuarios(Pageable paginacao) {
-        return usuarioRepository.findAll(paginacao).map(UsuarioDTO::new);
+    public Page<UsuarioResponseDTO> listarUsuarios(Pageable paginacao) {
+        return usuarioRepository.findAll(paginacao).map(this::toResponse);
     }
 
     @Transactional
-    public UsuarioDTO atualizarUsuario(Long id, UsuarioDTO dto) {
-        var usuario = usuarioRepository.findById(id).orElseThrow(
+    public UsuarioResponseDTO atualizarUsuario(Long id, UsuarioUpdateDTO dto) {
+        UsuarioEntity usuario = usuarioRepository.findById(id).orElseThrow(
                 () -> new IdNaoEncontradoExceptions("Id não encontrado.")
         );
-        if (dto.nome() != null) usuario.setNome(dto.nome());
-        if (dto.nomeUsuario() != null)usuario.setNomeUsuario(dto.nomeUsuario());
-        if (dto.senha() != null)usuario.setSenha(dto.senha());
-        return new UsuarioDTO(usuarioRepository.save(usuario));
+        if (dto.nome() != null) {
+            String nomeNormalizado = dto.nome().trim().replaceAll("\\s+", " ");
+            if (nomeNormalizado.isEmpty()) {
+                throw new IllegalArgumentException("Nome não pode ser vazio.");
+            }
+            usuario.setNome(nomeNormalizado);
+        }
+        if (dto.nomeUsuario() != null) {
+            if (dto.nomeUsuario().contains(" ")) {
+                throw new NomeUsuarioComEspacosException("Nome de usuário não pode conter espaços.");
+            }
+            String novoUser = dto.nomeUsuario().replaceAll("\\s+", "").toLowerCase();
+            if (novoUser.isEmpty()) {
+                throw new IllegalArgumentException("Nome de usuário não pode ser vazio.");
+            }
+            if (novoUser.length() < 6) {
+                throw new IllegalArgumentException("Nome de usuário deve ter pelo menos 6 caracteres.");
+            }
+            if (!novoUser.equals(usuario.getNomeUsuario()) && usuarioRepository.existsByNomeUsuario(novoUser)) {
+                throw new NomeUsuarioExistenteExceptions("Nome de usuário já existe.");
+            }
+            usuario.setNomeUsuario(novoUser.trim());
+        }
+
+        if (dto.senha() != null) {
+            if (dto.senha().contains(" ")) {
+                throw new SenhaComEspacosException("Senha não pode conter espaços.");
+            }
+            String senhaNormalizada = dto.senha().replaceAll("\\s+", "").toLowerCase();
+            if (senhaNormalizada.isEmpty()) {
+                throw new IllegalArgumentException("Senha não pode ser vazia.");
+            }
+            if (senhaNormalizada.length() < 6 || senhaNormalizada.length() > 12) {
+                throw new IllegalArgumentException("A senha deve conter de 6 a 12 caracteres.");
+            }
+            usuario.setSenha(passwordEncoder.encode(senhaNormalizada).trim());
+        }
+        UsuarioEntity usuarioSalvo = usuarioRepository.save(usuario);
+        return toResponse(usuarioSalvo);
     }
 
     @Transactional
@@ -47,5 +98,9 @@ public class UsuarioService {
                 () -> new IdNaoEncontradoExceptions("Id não encontrado.")
         );
         usuarioRepository.deleteById(id);
+    }
+
+    private UsuarioResponseDTO toResponse(UsuarioEntity e) {
+        return new UsuarioResponseDTO(e.getId(), e.getNome(), e.getNomeUsuario());
     }
 }
